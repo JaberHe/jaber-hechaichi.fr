@@ -3,13 +3,11 @@
    Scripts de la page, sans dépendance. Chaque bloc est indépendant :
    1. Circuit animé et barre de progression au défilement
    2. Lien du menu actif selon la section visible
-   3. Bouton « Copier l'email »
-   4. Bouton « Réserver un échange » (pop-up Cal.com)
+   3. Bouton « Réserver un échange » (pop-up Cal.com)
    ========================================================================== */
 
 /* Réglages personnels : à modifier pour réutiliser le site */
 var CONFIG = {
-  email: 'jaber.hec@gmail.com',
   calLink: 'jaber-hechaichi/echange',   // partie de l'URL après https://cal.com/
   calNamespace: 'echange',
   calColors: { light: '#0a6cff', dark: '#3d8bff' }   // mêmes valeurs que --accent
@@ -182,61 +180,7 @@ var CONFIG = {
 })();
 
 
-/* 3. Bouton « Copier l'email »
-   --------------------------------------------------------------------------
-   Copie l'adresse dans le presse-papiers, sur ordinateur comme sur téléphone :
-   1. API Clipboard moderne ;
-   2. sinon, ancienne méthode execCommand('copy') via un champ caché
-      (nécessaire sur certains navigateurs mobiles et dans les iframes) ;
-   3. en dernier recours, l'adresse est sélectionnée à l'écran.
-   -------------------------------------------------------------------------- */
-(function () {
-  var btn = document.getElementById('copy-mail');
-  if (!btn) return;
-  var label = btn.textContent;
-
-  function feedback(text) {
-    btn.textContent = text;
-    btn.classList.add('done');
-    setTimeout(function () { btn.textContent = label; btn.classList.remove('done'); }, 2000);
-  }
-
-  // Copie via un champ texte temporaire. Le champ est en lecture seule et en
-  // 16 px pour éviter que le clavier ou le zoom ne s'ouvrent sur iPhone.
-  function legacyCopy(text) {
-    var ta = document.createElement('textarea');
-    ta.value = text;
-    ta.setAttribute('readonly', '');
-    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px;';
-    document.body.appendChild(ta);
-    ta.select();
-    ta.setSelectionRange(0, text.length);   // iOS
-    var ok = false;
-    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-    document.body.removeChild(ta);
-    return ok;
-  }
-
-  function fallback() {
-    if (legacyCopy(CONFIG.email)) { feedback('Email copié'); return; }
-    var s = window.getSelection(), rg = document.createRange();
-    rg.selectNodeContents(document.getElementById('mail'));
-    s.removeAllRanges();
-    s.addRange(rg);
-    feedback('Adresse sélectionnée');
-  }
-
-  btn.addEventListener('click', function () {
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(CONFIG.email).then(function () { feedback('Email copié'); }, fallback);
-    } else {
-      fallback();
-    }
-  });
-})();
-
-
-/* 4. Bouton « Réserver un échange »
+/* 3. Bouton « Réserver un échange »
    --------------------------------------------------------------------------
    Ouvre le calendrier Cal.com en pop-up. Le script Cal.com n'est chargé qu'au
    premier clic, pour garder la page légère. Si le script ne se charge pas

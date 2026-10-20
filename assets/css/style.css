@@ -133,7 +133,7 @@ nav ul a:hover { color: var(--fg); text-decoration: none; }
 nav ul a.active { color: var(--fg); }   /* section visible, posé par main.js */
 nav ul a.cta { display: inline-block; color: var(--bg); background: var(--fg); padding: 7px 14px; border-radius: 999px; }
 nav ul a.cta:hover { color: #fff; text-decoration: none; }
-/* Sur mobile, seul le bouton « Me contacter » reste visible */
+/* Sur mobile, seul le bouton « Contact » reste visible */
 @media (max-width: 640px) { nav ul li:not(:last-child) { display: none; } }
 
 
@@ -247,16 +247,7 @@ section[id] { scroll-margin-top: 64px; }
 
 /* 5.7 Contact et pied de page --------------------------------------------- */
 .contact { border-bottom: 0; }
-.contact .book { margin-top: 32px; }   /* bouton Cal.com */
-.contact .mail { display: inline-block; margin-top: 28px; font-family: var(--display); font-size: clamp(24px, 4vw, 36px); letter-spacing: -0.02em; font-weight: 500; word-break: break-all; }
-.mail-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; margin-top: 28px; }
-.mail-row .mail { margin-top: 0; }
-.contact .book + .mail-row { margin-top: 24px; }
-.contact .mail-row .mail { font-size: clamp(20px, 3vw, 28px); }
-
-.copy { font: 500 15px var(--sans); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 9px 18px; cursor: pointer; }
-.copy:hover { border-color: var(--fg); }
-.copy.done { color: var(--accent); border-color: var(--accent); }   /* après copie */
+.contact .actions { margin-top: 32px; }   /* boutons Cal.com et email */
 
 .links { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 32px; font-size: 16px; }
 
