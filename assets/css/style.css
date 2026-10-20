@@ -1,0 +1,298 @@
+/* ==========================================================================
+   Portfolio · Jaber Hechaichi
+   Feuille de style unique, sans framework.
+
+   Sommaire
+   1. Variables (couleurs, polices) et thème sombre
+   2. Base (reset, typographie, liens)
+   3. Boutons
+   4. Navigation
+   5. Sections, dans l'ordre de la page
+      5.1 Hero et bandeau de compétences
+      5.2 Chiffres clés et citation mise en avant
+      5.3 Expertise
+      5.4 Réalisations
+      5.5 Parcours
+      5.6 Recommandations
+      5.7 Contact et pied de page
+   6. Circuit animé au défilement (écrans larges)
+   7. Barre de progression (mobile)
+
+   Pour changer la couleur principale, modifier --accent dans les deux thèmes.
+   ========================================================================== */
+
+
+/* 1. Variables et thème sombre
+   -------------------------------------------------------------------------- */
+:root {
+  --bg: #fcfcfd;       /* fond de page */
+  --bg-alt: #f3f4f6;   /* fond des sections alternées (.alt) */
+  --fg: #16181d;       /* texte principal */
+  --muted: #5f6570;    /* texte secondaire */
+  --line: #e3e5e9;     /* filets et bordures */
+  --accent: #0a6cff;   /* bleu des liens, boutons et du circuit */
+  --trace: #d5d8de;    /* pistes du circuit avant remplissage */
+  --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --display: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* Thème sombre : suit le réglage du système, sauf si data-theme="light" est
+   posé sur <html>. data-theme="dark" force le sombre. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e0f12; --bg-alt: #17191d; --fg: #eceef2; --muted: #9aa0aa; --line: #262a30; --accent: #3d8bff; --trace: #2c3138;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e0f12; --bg-alt: #17191d; --fg: #eceef2; --muted: #9aa0aa; --line: #262a30; --accent: #3d8bff; --trace: #2c3138;
+  color-scheme: dark;
+}
+
+
+/* 2. Base
+   -------------------------------------------------------------------------- */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 17px/1.55 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Conteneur centré utilisé par chaque section */
+.wrap {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(40px, 7.2vw, 76px); line-height: 1.02; letter-spacing: -0.035em; font-weight: 700; max-width: 19ch; }
+h1 span { color: var(--muted); }
+h2 { font-size: clamp(30px, 4.4vw, 44px); line-height: 1.1; letter-spacing: -0.022em; font-weight: 600; max-width: 20ch; }
+h3 { font-size: 21px; line-height: 1.3; letter-spacing: -0.01em; font-weight: 600; }
+p { margin: 0; }
+
+/* Petit titre en capitales au-dessus de chaque h2 */
+.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; }
+/* Paragraphe d'introduction sous un titre */
+.lead { color: var(--muted); font-size: 19px; max-width: 64ch; margin-top: 18px; }
+
+/* Pastilles de technologies (Réalisations) */
+.tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.tags span { font-family: var(--mono); font-size: 12px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+
+
+/* 3. Boutons
+   -------------------------------------------------------------------------- */
+.btn { display: inline-block; padding: 12px 22px; border-radius: 999px; font-size: 16px; font-weight: 500; }
+.btn:hover { text-decoration: none; }
+
+.btn.secondary { color: var(--fg); border: 1px solid var(--line); }
+.btn.secondary:hover { border-color: var(--fg); }
+
+.btn.primary { display: inline-flex; align-items: center; gap: 10px; background: var(--fg); color: var(--bg); }
+.btn.primary:hover { color: #fff; }
+.btn.primary .arrow { font-style: normal; color: var(--accent); transition: transform .45s cubic-bezier(.65, 0, .35, 1), color .3s; }
+.btn.primary:hover .arrow, .btn.primary:focus-visible .arrow { color: #fff; transform: translateX(4px); }
+
+/* Effet de survol des boutons principaux et du bouton du menu : un fond bleu
+   se remplit de gauche à droite, comme le circuit. Le fond est un ::before
+   placé sous le texte (z-index -1, isolé dans le bouton grâce à isolation). */
+.btn.primary, nav ul a.cta { position: relative; overflow: hidden; isolation: isolate; transition: color .3s; }
+.btn.primary::before, nav ul a.cta::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: var(--accent);
+  transform: scaleX(0); transform-origin: left center;
+  transition: transform .45s cubic-bezier(.65, 0, .35, 1);
+}
+.btn.primary:hover::before, .btn.primary:focus-visible::before,
+nav ul a.cta:hover::before, nav ul a.cta:focus-visible::before { transform: scaleX(1); }
+@media (prefers-reduced-motion: reduce) { .btn.primary::before, nav ul a.cta::before, .btn.primary .arrow { transition: none; } }
+
+
+/* 4. Navigation (collée en haut de l'écran)
+   -------------------------------------------------------------------------- */
+nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 4; background: var(--bg); border-bottom: 1px solid var(--line); }
+nav .wrap { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-block: 14px; }
+nav .name { font-weight: 600; font-size: 15px; color: var(--fg); }
+nav ul { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 22px; font-size: 14px; }
+nav ul a { color: var(--muted); }
+nav ul a:hover { color: var(--fg); text-decoration: none; }
+nav ul a.active { color: var(--fg); }   /* section visible, posé par main.js */
+nav ul a.cta { display: inline-block; color: var(--bg); background: var(--fg); padding: 7px 14px; border-radius: 999px; }
+nav ul a.cta:hover { color: #fff; text-decoration: none; }
+/* Sur mobile, seul le bouton « Me contacter » reste visible */
+@media (max-width: 640px) { nav ul li:not(:last-child) { display: none; } }
+
+
+/* 5. Sections
+   -------------------------------------------------------------------------- */
+section { padding-block: 96px; border-bottom: 1px solid var(--line); }
+section.alt { background: var(--bg-alt); }
+/* Décalage des ancres pour ne pas passer sous la navigation */
+section[id] { scroll-margin-top: 64px; }
+
+
+/* 5.1 Hero et bandeau de compétences ------------------------------------- */
+.hero { padding-block: 120px 96px; }
+.hero .status { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); margin-bottom: 28px; }
+.hero .status i { width: 8px; height: 8px; border-radius: 50%; background: #2ea043; display: inline-block; }   /* pastille verte */
+.hero .lead { font-size: clamp(19px, 2.2vw, 22px); margin-top: 26px; }
+.actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 36px; }
+
+/* Le bandeau contient deux listes identiques : la piste défile de 100 % de sa
+   largeur puis repart, ce qui donne une boucle sans à-coup. Pause au survol. */
+.marquee {
+  margin-top: 56px; display: flex; overflow: hidden; padding-block: 16px;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  /* fondu sur les bords gauche et droit */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.marquee-track { list-style: none; margin: 0; padding: 0; display: flex; flex-shrink: 0; animation: marquee 48s linear infinite; }
+.marquee-track li { font-family: var(--mono); font-size: 14px; color: var(--muted); white-space: nowrap; padding-inline: 22px; position: relative; }
+.marquee-track li::after { content: ""; position: absolute; right: -2px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--line); }   /* point séparateur */
+.marquee:hover .marquee-track { animation-play-state: paused; }
+@keyframes marquee { to { transform: translateX(-100%); } }
+@media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }
+
+
+/* 5.2 Chiffres clés et citation mise en avant ----------------------------- */
+.figures { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
+.figures div { border-top: 1px solid var(--fg); padding-top: 16px; }
+.figures strong { display: block; font-family: var(--display); font-size: clamp(40px, 5.5vw, 56px); line-height: 1; letter-spacing: -0.03em; font-weight: 600; font-variant-numeric: tabular-nums; }
+.figures span { display: block; color: var(--muted); font-size: 15px; margin-top: 10px; }
+@media (max-width: 760px) { .figures { grid-template-columns: repeat(2, 1fr); } }
+
+.featured { margin: 64px 0 0; max-width: 760px; }
+.featured blockquote { margin: 0; font-family: var(--display); font-size: clamp(22px, 2.8vw, 28px); line-height: 1.35; letter-spacing: -0.015em; font-weight: 500; text-wrap: balance; }
+.featured blockquote::before { content: "« "; color: var(--accent); }
+.featured blockquote::after { content: " »"; color: var(--accent); }
+.featured figcaption { margin-top: 14px; color: var(--muted); font-size: 15px; }
+
+
+/* 5.3 Expertise : 4 étapes (4 colonnes, puis 2, puis 1) ------------------- */
+.offers { margin-top: 56px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 36px; }
+.offers > div { min-width: 0; }
+.offers p { color: var(--muted); margin-top: 10px; font-size: 16px; }
+@media (max-width: 1100px) { .offers { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 760px) { .offers { grid-template-columns: 1fr; gap: 32px; } }
+
+
+/* 5.4 Réalisations : une étude de cas = colonne contexte + colonne détail - */
+.cases { margin-top: 56px; display: grid; gap: 0; }
+.case { display: grid; grid-template-columns: 200px 1fr; gap: 32px; padding-block: 40px; border-top: 1px solid var(--line); }
+.case:last-child { padding-bottom: 0; }
+.case > div { min-width: 0; }
+.case .meta { font-size: 14px; color: var(--muted); }
+.case .meta b { display: block; color: var(--fg); font-weight: 600; margin-bottom: 4px; }
+
+/* Chiffres propres à une mission */
+.case-figures { margin-top: 22px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.case-figures strong { display: block; font-family: var(--display); font-size: 34px; line-height: 1; letter-spacing: -0.02em; font-weight: 600; font-variant-numeric: tabular-nums; }
+.case-figures span { display: block; color: var(--muted); font-size: 14px; margin-top: 6px; }
+
+/* Groupes de missions (Développement, Gouvernance…) */
+.case-groups { margin-top: 28px; display: grid; gap: 22px; }
+.case-groups h4 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.case-groups ul { margin: 0; padding-left: 18px; font-size: 16px; display: grid; gap: 4px; }
+.case-groups li::marker { color: var(--accent); }
+
+@media (max-width: 760px) {
+  .case-figures { grid-template-columns: repeat(2, 1fr); }
+  .case { grid-template-columns: 1fr; gap: 12px; }
+}
+
+
+/* 5.5 Parcours : frise chronologique -------------------------------------- */
+.timeline { margin-top: 48px; list-style: none; padding: 0; display: grid; gap: 0; }
+.timeline li { display: grid; grid-template-columns: 140px 1fr; gap: 24px; padding-block: 18px; border-top: 1px solid var(--line); }
+.timeline li > div { min-width: 0; }
+.timeline time { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+.timeline span { display: block; color: var(--muted); font-size: 15px; }
+.timeline li.now strong { color: var(--accent); }   /* poste actuel en bleu */
+@media (max-width: 560px) { .timeline li { grid-template-columns: 1fr; gap: 4px; } }
+
+.side-note { margin-top: 40px; color: var(--muted); font-size: 16px; max-width: 60ch; }
+.side-note b { color: var(--fg); font-weight: 600; }
+
+
+/* 5.6 Recommandations : citations sur 2 colonnes -------------------------- */
+.quotes { margin-top: 48px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 48px; }
+.quotes figure { margin: 0; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 20px; border-top: 1px solid var(--line); padding-top: 20px; }
+.quotes blockquote { margin: 0; font-size: 17px; line-height: 1.55; }
+.quotes blockquote::before { content: "« "; color: var(--accent); }
+.quotes blockquote::after { content: " »"; color: var(--accent); }
+.quotes figcaption { font-size: 14px; color: var(--muted); }
+.quotes figcaption b { display: block; color: var(--fg); font-weight: 600; }
+@media (max-width: 900px) { .quotes { grid-template-columns: 1fr; gap: 32px; } }
+
+/* Lien discret vers les recommandations LinkedIn */
+.verify { margin-top: 40px; font-size: 14px; }
+.verify a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.verify a:hover { color: var(--fg); }
+
+
+/* 5.7 Contact et pied de page --------------------------------------------- */
+.contact { border-bottom: 0; }
+.contact .book { margin-top: 32px; }   /* bouton Cal.com */
+.contact .mail { display: inline-block; margin-top: 28px; font-family: var(--display); font-size: clamp(24px, 4vw, 36px); letter-spacing: -0.02em; font-weight: 500; word-break: break-all; }
+.mail-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; margin-top: 28px; }
+.mail-row .mail { margin-top: 0; }
+.contact .book + .mail-row { margin-top: 24px; }
+.contact .mail-row .mail { font-size: clamp(20px, 3vw, 28px); }
+
+.copy { font: 500 15px var(--sans); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 9px 18px; cursor: pointer; }
+.copy:hover { border-color: var(--fg); }
+.copy.done { color: var(--accent); border-color: var(--accent); }   /* après copie */
+
+.links { display: flex; flex-wrap: wrap; gap: 28px; margin-top: 32px; font-size: 16px; }
+
+footer { padding-block: 32px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); }
+footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+
+
+/* 6. Circuit animé au défilement
+   Le SVG est dessiné par main.js. Il est fixé à droite de l'écran et
+   n'apparaît qu'à partir de 860 px de large ; le contenu se resserre alors
+   pour lui laisser la place.
+   -------------------------------------------------------------------------- */
+.circuit { position: fixed; top: 0; right: 28px; width: 120px; height: 100vh; pointer-events: none; z-index: 5; display: none; }
+.circuit svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.circuit .trace { fill: none; stroke: var(--trace); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }   /* piste grise */
+.circuit .fill { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }   /* remplissage bleu */
+.circuit .branch .fill { transition: stroke-dashoffset .5s ease-out; }
+.circuit .pad { fill: var(--bg); stroke: var(--trace); stroke-width: 2; transition: fill .4s, stroke .4s; }   /* pastille en bout de dérivation */
+.circuit .on .pad, .circuit .pad.on { fill: var(--accent); stroke: var(--accent); }
+.circuit .chip { fill: var(--bg); stroke: var(--trace); stroke-width: 2; transition: stroke .4s; }   /* puce « DB » finale */
+.circuit .chip.on { stroke: var(--accent); }
+.circuit .chip-label { font: 600 9px var(--mono); fill: var(--muted); letter-spacing: .08em; transition: fill .4s; }
+.circuit .chip.on + .chip-label { fill: var(--accent); }
+.circuit .head-halo { fill: var(--accent); opacity: .18; }   /* tête du fluide */
+.circuit .head { fill: var(--accent); }
+@media (min-width: 860px) {
+  .circuit { display: block; }
+  .wrap { max-width: min(1140px, calc(100vw - 320px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .circuit .branch .fill, .circuit .pad, .circuit .chip { transition: none; }
+}
+
+
+/* 7. Barre de progression (remplace le circuit sous 860 px)
+   -------------------------------------------------------------------------- */
+.progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 6; pointer-events: none; }
+.progress i { display: block; height: 100%; background: var(--accent); transform-origin: 0 50%; transform: scaleX(0); }
+@media (min-width: 860px) { .progress { display: none; } }
