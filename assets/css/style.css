@@ -31,7 +31,10 @@
   --muted: #5f6570;    /* texte secondaire */
   --line: #e3e5e9;     /* filets et bordures */
   --accent: #0a6cff;   /* bleu des liens, boutons et du circuit */
-  --trace: #d5d8de;    /* pistes du circuit avant remplissage */
+  --etch: rgba(22, 24, 29, .16);         /* pistes du circuit gravé */
+  --etch-soft: rgba(22, 24, 29, .035);   /* sillons et corps des composants */
+  --etch-strong: rgba(22, 24, 29, .22);  /* puces et plots */
+  --flow: #bcd6ff;                       /* reflets du liquide */
   --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --display: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -41,12 +44,14 @@
    posé sur <html>. data-theme="dark" force le sombre. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0e0f12; --bg-alt: #17191d; --fg: #eceef2; --muted: #9aa0aa; --line: #262a30; --accent: #3d8bff; --trace: #2c3138;
+    --bg: #0e0f12; --bg-alt: #17191d; --fg: #eceef2; --muted: #9aa0aa; --line: #262a30; --accent: #3d8bff;
+    --etch: rgba(255, 255, 255, .11); --etch-soft: rgba(255, 255, 255, .025); --etch-strong: rgba(255, 255, 255, .18); --flow: #a9cbff;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0e0f12; --bg-alt: #17191d; --fg: #eceef2; --muted: #9aa0aa; --line: #262a30; --accent: #3d8bff; --trace: #2c3138;
+  --bg: #0e0f12; --bg-alt: #17191d; --fg: #eceef2; --muted: #9aa0aa; --line: #262a30; --accent: #3d8bff;
+    --etch: rgba(255, 255, 255, .11); --etch-soft: rgba(255, 255, 255, .025); --etch-strong: rgba(255, 255, 255, .18); --flow: #a9cbff;
   color-scheme: dark;
 }
 
@@ -255,30 +260,42 @@ footer { padding-block: 32px; color: var(--muted); font-size: 13px; border-top: 
 footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 
 
-/* 6. Circuit animé au défilement
-   Le SVG est dessiné par main.js. Il est fixé à droite de l'écran et
-   n'apparaît qu'à partir de 860 px de large ; le contenu se resserre alors
+/* 6. Circuit imprimé en fond de page (écrans larges)
+   Le SVG est dessiné par main.js sur toute la hauteur du document, dans la
+   marge droite : une piste de la puce SRC à la puce DB. Il défile avec la page et passe sous la navigation. Les
+   pistes sont semi-transparentes pour se fondre dans chaque fond de section.
+   Il n'apparaît qu'à partir de 860 px de large ; le contenu se resserre alors
    pour lui laisser la place.
    -------------------------------------------------------------------------- */
-.circuit { position: fixed; top: 0; right: 28px; width: 120px; height: 100vh; pointer-events: none; z-index: 5; display: none; }
-.circuit svg { width: 100%; height: 100%; display: block; overflow: visible; }
-.circuit .trace { fill: none; stroke: var(--trace); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }   /* piste grise */
-.circuit .fill { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }   /* remplissage bleu */
-.circuit .branch .fill { transition: stroke-dashoffset .5s ease-out; }
-.circuit .pad { fill: var(--bg); stroke: var(--trace); stroke-width: 2; transition: fill .4s, stroke .4s; }   /* pastille en bout de dérivation */
-.circuit .on .pad, .circuit .pad.on { fill: var(--accent); stroke: var(--accent); }
-.circuit .chip { fill: var(--bg); stroke: var(--trace); stroke-width: 2; transition: stroke .4s; }   /* puce « DB » finale */
-.circuit .chip.on { stroke: var(--accent); }
-.circuit .chip-label { font: 600 9px var(--mono); fill: var(--muted); letter-spacing: .08em; transition: fill .4s; }
-.circuit .chip.on + .chip-label { fill: var(--accent); }
-.circuit .head-halo { fill: var(--accent); opacity: .18; }   /* tête du fluide */
-.circuit .head { fill: var(--accent); }
+body { position: relative; }
+.circuit { position: absolute; top: 0; right: 16px; width: 160px; pointer-events: none; z-index: 1; display: none; }
+.circuit svg { width: 100%; display: block; overflow: visible; }
+
+/* Décor gravé */
+.circuit .trace { fill: none; stroke: var(--etch); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.circuit .trace.channel { stroke: var(--etch-soft); stroke-width: 9; }   /* sillon autour de la piste principale */
+.circuit .trace.main { stroke-width: 3; }
+.circuit .ic-body { fill: var(--etch-soft); stroke: var(--etch-strong); stroke-width: 1.5; transition: stroke .5s; }
+.circuit .ic .leg { stroke: var(--etch-strong); stroke-width: 2; transition: stroke .5s; }
+.circuit .ic-label { font: 600 9px var(--mono); fill: var(--muted); letter-spacing: .1em; transition: fill .5s; }
+.circuit .ic.on .ic-body, .circuit .ic.on .leg { stroke: var(--accent); }
+.circuit .ic.on .ic-label { fill: var(--accent); }
+
+/* Liquide : lueur floue, cœur bleu, reflets clairs qui s'écoulent vers le bas */
+.circuit .liquid { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linejoin: round; stroke-linecap: round; }
+.circuit .liquid-glow { fill: none; stroke: var(--accent); stroke-width: 10; stroke-linejoin: round; stroke-linecap: round; opacity: .45; }
+.circuit .flow { fill: none; stroke: var(--flow); stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 2 22; animation: flow 1.6s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -24; } }
+.circuit .head-halo { fill: var(--accent); opacity: .45; }
+.circuit .head { fill: var(--accent); stroke: var(--flow); stroke-width: 1.5; }
+
 @media (min-width: 860px) {
   .circuit { display: block; }
   .wrap { max-width: min(1140px, calc(100vw - 320px)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .circuit .branch .fill, .circuit .pad, .circuit .chip { transition: none; }
+  .circuit .flow { animation: none; }
+  .circuit .ic-body, .circuit .ic .leg { transition: none; }
 }
 
 

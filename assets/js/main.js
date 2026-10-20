@@ -1,7 +1,7 @@
 /* ==========================================================================
    Portfolio · Jaber Hechaichi
    Scripts de la page, sans dépendance. Chaque bloc est indépendant :
-   1. Circuit animé et barre de progression au défilement
+   1. Circuit imprimé en fond de page et barre de progression
    2. Lien du menu actif selon la section visible
    3. Bouton « Réserver un échange » (pop-up Cal.com)
    ========================================================================== */
@@ -14,29 +14,26 @@ var CONFIG = {
 };
 
 
-/* 1. Circuit animé et barre de progression
+/* 1. Circuit imprimé en fond de page et barre de progression
    --------------------------------------------------------------------------
-   Une piste verticale de circuit imprimé se remplit de bleu à mesure que l'on
-   descend dans la page. Des dérivations s'allument au passage du fluide et la
-   puce « DB » s'allume en bas de page. Sous 860 px, le CSS masque le circuit
-   et affiche à la place une barre de progression en haut de l'écran.
+   Une piste de circuit imprimé est gravée dans la marge droite, sur toute la
+   hauteur de la page : elle part de la puce « SRC » en haut et finit dans la
+   puce « DB » en bas. Tout en haut de la page, seule la puce SRC est bleue.
+   Au défilement, un liquide bleu descend le long de la piste, au rythme de la
+   lecture, et atteint la puce DB en bas de page.
+   Sous 860 px, le CSS masque le circuit et affiche une barre de progression.
    -------------------------------------------------------------------------- */
 (function () {
   var svg = document.getElementById('circuit');
   if (!svg) return;
   var bar = document.getElementById('progress');
   var NS = 'http://www.w3.org/2000/svg';
-  var W = 120;   // largeur du SVG en px, identique à .circuit dans le CSS
-
-  // Points de passage de la piste principale : [x en px, y en fraction de la
-  // hauteur d'écran]. Entre deux x différents, un coude à 45° est ajouté.
-  var WAY = [[60, 0], [60, .10], [88, .20], [88, .34], [40, .46], [40, .60], [76, .72], [76, .84], [60, .90]];
-  // Dérivations : [x de départ, y en fraction de la hauteur, sens (1 droite, -1 gauche)]
-  var BRANCHES = [[60, .05, 1], [88, .26, 1], [88, .30, -1], [40, .52, -1], [40, .56, 1], [76, .78, 1], [76, .80, -1]];
-
+  var W = 160;                                   // largeur du circuit en px (identique au CSS)
+  var LANES = [104, 64, 120, 80, 48, 96, 72];    // colonne de la piste pour chaque section
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var pts, lens, total, branches, chip, head, halo, fill, H;
-  var cur = 0, target = 0, ticking = false;
+
+  var pts, lens, total, chip, fill, glow, maskPath, head, halo;
+  var cur = 0, target = 0, ticking = false, lastH = 0;
 
   // Crée un élément SVG avec ses attributs
   function el(name, attrs, parent) {
@@ -46,59 +43,82 @@ var CONFIG = {
     return e;
   }
   // Convertit une liste de points en attribut "d" de <path>
-  function d(p) { return 'M' + p.map(function (q) { return q[0] + ' ' + q[1]; }).join(' L'); }
+  function d(p) { return 'M' + p.map(function (q) { return q[0].toFixed(1) + ' ' + q[1].toFixed(1); }).join(' L'); }
+  // Position d'un élément depuis le haut du document
+  function docTop(node) { return node.getBoundingClientRect().top + window.scrollY; }
 
-  // Dessine (ou redessine au redimensionnement) tout le circuit
-  function build() {
-    H = window.innerHeight;
-    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-    svg.innerHTML = '';
-    var chipTop = Math.round(H * .92);
+  // Ajoute un changement de colonne vers x2 avec un coude à 45°, à partir de y
+  function jog(p, x2, y) {
+    var x1 = p[p.length - 1][0];
+    if (x1 === x2) return;
+    p.push([x1, y]);
+    p.push([x2, y + Math.abs(x2 - x1)]);
+  }
 
-    // Points de la piste en px, avec les coudes à 45°
-    pts = [[WAY[0][0], 0]];
-    for (var i = 1; i < WAY.length; i++) {
-      var x = WAY[i][0], y = WAY[i][1] * H, px = pts[pts.length - 1][0];
-      if (x !== px) pts.push([px, y - Math.abs(x - px)]);
-      pts.push([x, y]);
+  // Puce avec ses broches latérales et une étiquette
+  function ic(cx, cy, w, h, label) {
+    var g = el('g', { 'class': 'ic' });
+    for (var i = 0; i < 4; i++) {
+      var py = cy - h / 2 + 7 + i * ((h - 14) / 3);
+      el('line', { x1: cx - w / 2 - 6, y1: py, x2: cx - w / 2, y2: py, 'class': 'leg' }, g);
+      el('line', { x1: cx + w / 2, y1: py, x2: cx + w / 2 + 6, y2: py, 'class': 'leg' }, g);
     }
-    pts.push([60, chipTop]);
+    el('rect', { x: cx - w / 2, y: cy - h / 2, width: w, height: h, rx: 3, 'class': 'ic-body' }, g);
+    el('text', { x: cx, y: cy + 3, 'text-anchor': 'middle', 'class': 'ic-label' }, g).textContent = label;
+    return g;
+  }
+
+  // Dessine (ou redessine si la hauteur de la page change) tout le circuit
+  function build() {
+    var H = document.documentElement.scrollHeight;
+    lastH = H;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    svg.setAttribute('height', H);
+    svg.innerHTML = '';
+
+    // Lueur floue, et masque qui limite les reflets à la partie déjà remplie
+    var defs = el('defs', {});
+    var f = el('filter', { id: 'glow', x: '-50%', y: '-50%', width: '200%', height: '200%' }, defs);
+    el('feGaussianBlur', { stdDeviation: 4 }, f);
+    var mask = el('mask', { id: 'filled', maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: W, height: H }, defs);
+
+    // Tracé : une colonne par section, coude à 45° avant chaque nouvelle section
+    var marks = [].slice.call(document.querySelectorAll('main > section')).map(docTop);
+    var srcY = 150, dbY = H - 144;
+    pts = [[LANES[0], srcY + 22]];
+    marks.forEach(function (y, i) {
+      if (i === 0) return;
+      var last = pts[pts.length - 1], x2 = LANES[i % LANES.length];
+      jog(pts, x2, Math.max(last[1] + 20, y - 40 - Math.abs(x2 - last[0])));
+    });
+    jog(pts, 80, dbY - 96);
+    pts.push([80, dbY - 26]);
 
     // Longueur cumulée à chaque point, pour savoir jusqu'où remplir
     lens = [0];
-    for (i = 1; i < pts.length; i++) lens.push(lens[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    for (var i = 1; i < pts.length; i++) lens.push(lens[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
     total = lens[lens.length - 1];
 
-    // Dérivations : piste grise, remplissage bleu masqué, pastille au bout
-    branches = BRANCHES.map(function (b) {
-      var x = b[0], y = b[1] * H, s = b[2], len = s > 0 ? W - 12 - x : x - 12;
-      var bp = [[x, y], [x + s * 14, y + 14], [x + s * len, y + 14]];
-      var g = el('g', { 'class': 'branch' });
-      el('path', { d: d(bp), 'class': 'trace' }, g);
-      var bl = 14 * Math.SQRT2 + (len - 14);
-      var f = el('path', { d: d(bp), 'class': 'fill', 'stroke-dasharray': bl, 'stroke-dashoffset': bl }, g);
-      el('circle', { cx: x + s * len, cy: y + 14, r: 4, 'class': 'pad' }, g);
-      return { g: g, f: f, at: lengthAtY(y) / total, on: false };
-    });
+    // Piste gravée grise, puis liquide. Le remplissage utilise
+    // stroke-dasharray/dashoffset : offset = longueur totale masque tout, 0 affiche tout.
+    var path = d(pts);
+    el('path', { d: path, 'class': 'trace channel' });
+    el('path', { d: path, 'class': 'trace main' });
+    glow = el('path', { d: path, 'class': 'liquid-glow', 'stroke-dasharray': total, 'stroke-dashoffset': total, filter: 'url(#glow)' });
+    fill = el('path', { d: path, 'class': 'liquid', 'stroke-dasharray': total, 'stroke-dashoffset': total });
+    maskPath = el('path', { d: path, stroke: '#fff', 'stroke-width': 8, fill: 'none', 'stroke-dasharray': total, 'stroke-dashoffset': total }, mask);
+    el('path', { d: path, 'class': 'flow', mask: 'url(#filled)' });   // reflets qui s'écoulent
 
-    // Piste principale. Le remplissage utilise stroke-dasharray/dashoffset :
-    // un offset égal à la longueur totale masque tout, 0 affiche tout.
-    el('path', { d: d(pts), 'class': 'trace' });
-    fill = el('path', { d: d(pts), 'class': 'fill', 'stroke-dasharray': total, 'stroke-dashoffset': total });
-    chip = el('rect', { x: 40, y: chipTop, width: 40, height: 26, rx: 3, 'class': 'chip' });
-    el('text', { x: 60, y: chipTop + 16.5, 'text-anchor': 'middle', 'class': 'chip-label' }).textContent = 'DB';
-    halo = el('circle', { r: 8, 'class': 'head-halo' });
-    head = el('circle', { r: 4, 'class': 'head' });
+    // Puce source (toujours bleue) et puce base de données (bleue à l'arrivée)
+    ic(LANES[0], srcY, 40, 44, 'SRC').classList.add('on');
+    chip = ic(80, dbY, 52, 52, 'DB');
+
+    // Tête du liquide : une goutte avec un halo
+    halo = el('circle', { r: 11, 'class': 'head-halo', filter: 'url(#glow)' });
+    head = el('circle', { r: 4.5, 'class': 'head' });
     draw(cur);
   }
 
-  // Longueur de piste parcourue quand le fluide atteint la hauteur y
-  function lengthAtY(y) {
-    for (var i = 1; i < pts.length; i++) {
-      if (pts[i][1] >= y && pts[i][0] === pts[i - 1][0]) return lens[i - 1] + (y - pts[i - 1][1]);
-    }
-    return total;
-  }
   // Coordonnées du point situé à la longueur L sur la piste
   function pointAt(L) {
     for (var i = 1; i < lens.length; i++) {
@@ -110,40 +130,35 @@ var CONFIG = {
     return pts[pts.length - 1];
   }
 
-  // Affiche l'état du circuit pour une progression p entre 0 et 1
-  function draw(p) {
-    var L = p * total, q = pointAt(L);
-    if (bar) bar.style.transform = 'scaleX(' + p + ')';
-    fill.setAttribute('stroke-dashoffset', total - L);
-    head.setAttribute('cx', q[0]); head.setAttribute('cy', q[1]);
-    halo.setAttribute('cx', q[0]); halo.setAttribute('cy', q[1]);
-    branches.forEach(function (b) {
-      var on = p >= b.at;
-      if (on !== b.on) {
-        b.on = on;
-        b.f.setAttribute('stroke-dashoffset', on ? 0 : b.f.getAttribute('stroke-dasharray'));
-        b.g.classList.toggle('on', on);
-      }
-    });
-    chip.classList.toggle('on', p > .995);
-  }
-
-  // Progression du défilement dans la page, entre 0 et 1
+  // Progression du défilement, entre 0 (haut de page) et 1 (bas de page)
   function progress() {
     var max = document.documentElement.scrollHeight - window.innerHeight;
     return max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 1;
   }
 
-  // Le fluide rattrape la position de défilement en douceur (12 % de l'écart
-  // par image) au lieu de sauter, ce qui donne l'effet de liquide.
+  // Affiche le circuit rempli sur une proportion p de sa longueur
+  function draw(p) {
+    if (bar) bar.style.transform = 'scaleX(' + p + ')';
+    var L = p * total, off = total - L, q = pointAt(L);
+    fill.setAttribute('stroke-dashoffset', off);
+    glow.setAttribute('stroke-dashoffset', off);
+    maskPath.setAttribute('stroke-dashoffset', off);
+    head.setAttribute('cx', q[0]); head.setAttribute('cy', q[1]);
+    halo.setAttribute('cx', q[0]); halo.setAttribute('cy', q[1]);
+    var visible = p > .002 ? '' : 'none';           // pas de goutte tant que rien n'a coulé
+    head.style.display = halo.style.display = visible;
+    chip.classList.toggle('on', p > .998);
+  }
+
+  // Le liquide rattrape la position de défilement en douceur, image par image
   function loop() {
-    cur += (target - cur) * .12;
+    cur += (target - cur) * .1;
     if (Math.abs(target - cur) < .0005) cur = target;
     draw(cur);
     ticking = cur !== target;
     if (ticking) requestAnimationFrame(loop);
   }
-  function onScroll() {
+  function update() {
     target = progress();
     if (reduce) { cur = target; draw(cur); return; }   // pas d'animation si l'utilisateur la désactive
     if (!ticking) { ticking = true; requestAnimationFrame(loop); }
@@ -152,8 +167,12 @@ var CONFIG = {
   build();
   cur = target = progress();
   draw(cur);
-  window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', function () { build(); onScroll(); });
+  window.addEventListener('scroll', update, { passive: true });
+  // Redessine si la hauteur de la page change (redimensionnement, polices chargées)
+  function rebuildIfNeeded() { if (document.documentElement.scrollHeight !== lastH) { build(); update(); } }
+  window.addEventListener('resize', rebuildIfNeeded);
+  if (document.fonts) document.fonts.ready.then(rebuildIfNeeded);
+  window.addEventListener('load', rebuildIfNeeded);
 })();
 
 
